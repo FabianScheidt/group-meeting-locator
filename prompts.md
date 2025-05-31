@@ -34,3 +34,5 @@ This app is 98% created by ChatGPT. Here are the prompts that made it happen:
 > - The values are normalized to the minimum and maximum sampled point, so that the minimum point will be 0.0 and the maximum will be 1.0
 
 > Please write a Readme.md file about the app. Please mention that it was created in collaboration with ChatGPT.
+
+> Can you adjust the code to place the marker at the actual geometric median instead of just the average coordinates? 
