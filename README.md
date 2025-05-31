@@ -2,7 +2,7 @@
 
 **Group Meeting Locator** is a browser-based web application that helps a group of people find an optimal meeting location by minimizing total travel distances. It provides a simple interface for entering participant locations, visualizes these on an interactive map, and suggests a central meeting point based on geographical mean. The app includes a dynamic heat map to visualize optimality across the map.
 
-> ✨ This project was created in collaboration with [ChatGPT](https://chat.openai.com/), an AI assistant by OpenAI.
+> ✨ This project was ~~created in collaboration~~ vibe coded with [ChatGPT](https://chat.openai.com/), an AI assistant by OpenAI.
 
 ## Features
 
@@ -14,7 +14,6 @@
 - Displays individual distances to the meeting point and the total distance
 - Persists entered locations in local storage for convenience
 - Adds a heat map overlay showing the relative optimality of all areas in the current map view
-- Highlights the closest pair of participants with a visual link (optional)
 
 ## How It Works
 
@@ -25,7 +24,7 @@
 
 ## Usage
 
-1. Open the HTML file in any modern web browser.
+1. Open the demo page: https://fabianscheidt.github.io/group-meeting-locator/
 2. Enter the names or addresses of participants in the left sidebar.
 3. Click **"Update Map"** to visualize locations and compute the optimal meeting point.
 4. Optionally, drag the red marker to adjust the meeting point manually.
