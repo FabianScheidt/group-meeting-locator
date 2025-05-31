@@ -34,7 +34,7 @@
       margin-right: 0.5em;
     }
     .distance {
-      font-size: 0.9em;
+      font-size: 0.5em;
       color: #555;
       margin-top: 0.2em;
     }
@@ -174,6 +174,7 @@
         .on('drag', () => updateDistances(meanMarker.getLatLng()));
 
         map.setView([latMean, lonMean], 6);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         updateDistances({ lat: latMean, lng: lonMean });
         addHeatMapAround([latMean, lonMean]);
@@ -195,30 +196,32 @@
 
     function addHeatMapAround(center) {
       const bounds = map.getBounds();
-      const step = 0.2;
+      const step = 0.1;
       const heatData = [];
       const values = [];
 
       for (let lat = bounds.getSouth(); lat <= bounds.getNorth(); lat += step) {
         for (let lon = bounds.getWest(); lon <= bounds.getEast(); lon += step) {
-          let totalDist = 0;
-          coords.forEach(c => {
-            totalDist += computeDistance({ lat, lng: lon }, { lat: c.lat, lng: c.lon });
-          });
+          const totalDist = coords.reduce(
+            (acc, c) => acc + computeDistance({ lat, lng: lon }, { lat: c.lat, lng: c.lon }),
+            0
+          );
           values.push(totalDist);
           heatData.push([lat, lon, totalDist]);
         }
       }
 
-      const min = Math.min(...values);
-      const max = Math.max(...values);
+      const min = values.reduce((v1, v2) => v1 < v2 ? v1 : v2);
+      const max = values.reduce((v1, v2) => v1 > v2 ? v1 : v2);
 
       const normalizedData = heatData.map(([lat, lon, val]) => [lat, lon, (val - min) / (max - min)]);
 
+      console.log(normalizedData);
+
       heatLayer = L.heatLayer(normalizedData, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 12,
+        radius: 0,
+        blur: 0,
+        maxZoom: 10,
         gradient: { 0.0: 'green', 0.5: 'yellow', 1.0: 'red' }
       }).addTo(map);
     }
