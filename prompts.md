@@ -35,4 +35,11 @@ This app is 98% created by ChatGPT. Here are the prompts that made it happen:
 
 > Please write a Readme.md file about the app. Please mention that it was created in collaboration with ChatGPT.
 
-> Can you adjust the code to place the marker at the actual geometric median instead of just the average coordinates? 
+> Can you adjust the code to place the marker at the actual geometric median instead of just the average coordinates?
+
+> The calculation of the location where the cost is minimal does not always find the ideal location. Can you use a grid-based optimization approach instead?
+
+> Can you update the code so that:
+> - Geocoding uses concurrent requests
+> - Cost is shown in EUR
+> - Settings are shown in a separate tab

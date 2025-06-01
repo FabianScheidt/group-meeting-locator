@@ -47,15 +47,56 @@
       font-size: 0.9em;
       margin-top: 0.2em;
     }
+    .settings-group {
+      margin-top: 1em;
+      font-size: 0.9em;
+    }
+    .settings-group label {
+      display: block;
+      margin-top: 0.5em;
+    }
+    .tab {
+      display: none;
+    }
+    .tab.active {
+      display: block;
+    }
+    .tab-buttons {
+      display: flex;
+      margin-bottom: 1em;
+    }
+    .tab-buttons button {
+      flex: 1;
+      padding: 0.5em;
+    }
   </style>
 </head>
 <body>
   <div id="sidebar">
-    <h2>People & Locations</h2>
-    <div id="inputs"></div>
-    <button onclick="addPersonInput()">Add Person</button>
-    <button onclick="updateMap()">Update Map</button>
-    <div id="total-distance">Total Distance: –</div>
+    <div class="tab-buttons">
+      <button onclick="showTab('people')">People</button>
+      <button onclick="showTab('settings')">Settings</button>
+    </div>
+
+    <div id="people" class="tab active">
+      <h2>People & Locations</h2>
+      <div id="inputs"></div>
+      <button onclick="addPersonInput()">Add Person</button>
+      <button onclick="updateMap()">Update Map</button>
+      <div id="total-distance">Total Distance: –</div>
+    </div>
+
+    <div id="settings" class="tab">
+      <div class="settings-group">
+        <h3>Cost Settings</h3>
+        <label>Cost per km: <input type="number" id="cost-per-km" value="1" step="0.1"> EUR</label>
+        <label>Threshold 1 (km): <input type="number" id="threshold1" value="60"></label>
+        <label>Cost at Threshold 1: <input type="number" id="cost1" value="300"> EUR</label>
+        <label>Threshold 2 (km): <input type="number" id="threshold2" value="500"></label>
+        <label>Cost at Threshold 2: <input type="number" id="cost2" value="120"> EUR</label>
+        <label><input type="checkbox" id="use-cost"> Optimize for cost</label>
+      </div>
+    </div>
   </div>
   <div id="map"></div>
 
@@ -75,8 +116,13 @@
     let heatLayer = null;
     const totalDistanceElem = document.getElementById('total-distance');
 
+    function showTab(tabId) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+    }
+
     function saveInputsToLocalStorage() {
-      const values = Array.from(document.querySelectorAll('#inputs input')).map(input => input.value.trim());
+      const values = Array.from(document.querySelectorAll('#inputs input[type=text]')).map(input => input.value.trim());
       localStorage.setItem('locations', JSON.stringify(values));
     }
 
@@ -122,26 +168,41 @@
       return map.distance(latlng1, latlng2) / 1000;
     }
 
-    function geometricMedian(points, maxIterations = 100, tolerance = 1e-5) {
-      let x = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
-      let y = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
+    function computeCost(distance) {
+      const costPerKm = parseFloat(document.getElementById('cost-per-km').value);
+      const threshold1 = parseFloat(document.getElementById('threshold1').value);
+      const cost1 = parseFloat(document.getElementById('cost1').value);
+      const threshold2 = parseFloat(document.getElementById('threshold2').value);
+      const cost2 = parseFloat(document.getElementById('cost2').value);
+      let cost = distance * costPerKm;
+      if (distance > threshold1) cost += cost1;
+      if (distance > threshold2) cost += cost2;
+      return cost;
+    }
 
-      for (let i = 0; i < maxIterations; i++) {
-        let numX = 0, numY = 0, den = 0;
-        for (const p of points) {
-          const d = Math.sqrt((x - p.lat) ** 2 + (y - p.lon) ** 2) || 1e-10;
-          numX += p.lat / d;
-          numY += p.lon / d;
-          den += 1 / d;
+    function geometricMedian(coords, costMode) {
+      const minLat = Math.min(...coords.map(c => c.lat));
+      const maxLat = Math.max(...coords.map(c => c.lat));
+      const minLon = Math.min(...coords.map(c => c.lon));
+      const maxLon = Math.max(...coords.map(c => c.lon));
+      const step = 0.1;
+
+      let bestPoint = null;
+      let bestValue = Infinity;
+
+      for (let lat = minLat; lat <= maxLat; lat += step) {
+        for (let lon = minLon; lon <= maxLon; lon += step) {
+          const total = coords.reduce((acc, c) => {
+            const dist = computeDistance({ lat, lng: lon }, { lat: c.lat, lng: c.lon });
+            return acc + (costMode ? computeCost(dist) : dist);
+          }, 0);
+          if (total < bestValue) {
+            bestValue = total;
+            bestPoint = { lat, lng: lon };
+          }
         }
-        const newX = numX / den;
-        const newY = numY / den;
-        if (Math.abs(x - newX) < tolerance && Math.abs(y - newY) < tolerance) break;
-        x = newX;
-        y = newY;
       }
-
-      return { lat: x, lng: y };
+      return bestPoint;
     }
 
     async function updateMap() {
@@ -149,12 +210,11 @@
       markers = [];
       coords = [];
 
-      const inputs = document.querySelectorAll('#inputs input');
+      const inputs = document.querySelectorAll('#inputs input[type=text]');
       const distances = document.querySelectorAll('.distance');
       const errors = document.querySelectorAll('.error-message');
 
-      for (let i = 0; i < inputs.length; i++) {
-        const input = inputs[i];
+      const tasks = Array.from(inputs).map((input, i) => {
         const value = input.value.trim();
         const distanceElem = distances[i];
         const errorElem = errors[i];
@@ -162,25 +222,29 @@
         errorElem.textContent = '';
         distanceElem.textContent = 'Distance: –';
 
-        if (!value) continue;
+        if (!value) return null;
 
-        const result = await geocodeLocation(value);
-        if (result) {
-          const marker = L.marker([result.lat, result.lon])
+        return geocodeLocation(value).then(result => {
+          if (result) {
+            const marker = L.marker([result.lat, result.lon])
             .addTo(map)
             .bindPopup(result.display_name);
-          markers.push(marker);
-          coords.push({ lat: result.lat, lon: result.lon, distanceElem });
-        } else {
-          errorElem.textContent = 'Location not found.';
-        }
-      }
+            markers.push(marker);
+            coords.push({ lat: result.lat, lon: result.lon, distanceElem });
+          } else {
+            errorElem.textContent = 'Location not found.';
+          }
+        });
+      }).filter(Boolean);
+
+      await Promise.all(tasks);
 
       if (meanMarker) map.removeLayer(meanMarker);
       if (heatLayer) map.removeLayer(heatLayer);
 
       if (coords.length > 0) {
-        const median = geometricMedian(coords);
+        const useCost = document.getElementById('use-cost').checked;
+        const median = geometricMedian(coords, useCost);
 
         meanMarker = L.marker([median.lat, median.lng], {
           draggable: true,
@@ -191,31 +255,33 @@
           })
         })
         .addTo(map)
-        .bindPopup('Geometric Median')
+        .bindPopup(useCost ? 'Optimal Location (Cost)' : 'Geometric Median')
         .on('drag', () => updateDistances(meanMarker.getLatLng()));
 
         map.setView([median.lat, median.lng], 6);
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         updateDistances({ lat: median.lat, lng: median.lng });
-        addHeatMapAround([median.lat, median.lng]);
+        addHeatMapAround([median.lat, median.lng], useCost);
       } else {
-        map.setView([0, 0], 2);
-        totalDistanceElem.textContent = 'Total Distance: –';
+          map.setView([0, 0], 2);
+          totalDistanceElem.textContent = 'Total Distance: –';
       }
     }
 
     function updateDistances(center) {
-      let total = 0;
-      coords.forEach(c => {
-        const dist = computeDistance(center, { lat: c.lat, lng: c.lon });
-        total += dist;
-        c.distanceElem.textContent = `Distance: ${dist.toFixed(1)} km`;
-      });
-      totalDistanceElem.textContent = `Total Distance: ${total.toFixed(1)} km`;
+        let total = 0;
+        const useCost = document.getElementById('use-cost').checked;
+        coords.forEach(c => {
+          const dist = computeDistance(center, { lat: c.lat, lng: c.lon });
+          const value = useCost ? computeCost(dist) : dist;
+          total += value;
+          c.distanceElem.textContent = useCost ? `Cost: €${value.toFixed(1)}` : `Distance: ${dist.toFixed(1)} km`;
+        });
+        totalDistanceElem.textContent = useCost ? `Total Cost: €${total.toFixed(1)}` : `Total Distance: ${total.toFixed(1)} km`;
     }
 
-    function addHeatMapAround(center) {
+    function addHeatMapAround(center, useCost) {
       const bounds = map.getBounds();
       const step = 0.1;
       const heatData = [];
@@ -223,12 +289,12 @@
 
       for (let lat = bounds.getSouth(); lat <= bounds.getNorth(); lat += step) {
         for (let lon = bounds.getWest(); lon <= bounds.getEast(); lon += step) {
-          const totalDist = coords.reduce(
-            (acc, c) => acc + computeDistance({ lat, lng: lon }, { lat: c.lat, lng: c.lon }),
-            0
-          );
-          values.push(totalDist);
-          heatData.push([lat, lon, totalDist]);
+          const total = coords.reduce((acc, c) => {
+            const dist = computeDistance({ lat, lng: lon }, { lat: c.lat, lng: c.lon });
+            return acc + (useCost ? computeCost(dist) : dist);
+          }, 0);
+          values.push(total);
+          heatData.push([lat, lon, total]);
         }
       }
 
@@ -236,8 +302,6 @@
       const max = values.reduce((v1, v2) => v1 > v2 ? v1 : v2);
 
       const normalizedData = heatData.map(([lat, lon, val]) => [lat, lon, (val - min) / (max - min)]);
-
-      console.log(normalizedData);
 
       heatLayer = L.heatLayer(normalizedData, {
         radius: 0,
