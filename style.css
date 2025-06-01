@@ -1,0 +1,82 @@
+/* General Layout */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+}
+#sidebar {
+    width: 300px;
+    padding: 1em;
+    background: #f4f4f4;
+    overflow-y: auto;
+}
+#map {
+    flex: 1;
+}
+
+/* Tabs */
+.tab {
+    display: none;
+}
+.tab.active {
+    display: block;
+}
+.tab-buttons {
+    display: flex;
+    margin-bottom: 1em;
+}
+.tab-buttons button {
+    flex: 1;
+    padding: 0.5em;
+}
+.introduction h2 {
+    margin-bottom: 0;
+}
+.introduction p {
+    font-size: 0.8em;
+    margin: 0.5em 0 2em 0;
+}
+
+/* Input tab */
+.person-input {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.5em;
+}
+.person-input .top-row {
+    display: flex;
+}
+.person-input input {
+    flex: 1;
+    margin-right: 0.5em;
+}
+.error-message {
+    color: red;
+    font-size: 0.9em;
+    margin-top: 0.2em;
+}
+.distance {
+    font-size: 0.5em;
+    color: #555;
+    margin-top: 0.2em;
+}
+#total-distance {
+    font-weight: bold;
+    margin-top: 1em;
+}
+
+/* Settings Tab */
+.settings-group {
+    margin-top: 1em;
+}
+.settings-group label {
+    display: block;
+    position: relative;
+    margin-top: 0.5em;
+    line-height: 22px;
+}
+.settings-group label input {
+    position: absolute;
+    right: 0;
+}
