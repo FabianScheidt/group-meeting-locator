@@ -46,7 +46,7 @@ class InputsHandler {
         if (this.getInputs().length === 0) {
             this.addInput('');
         }
-        this.ADD_INPUT_BUTTON.addEventListener('click', (e) => this.addInput());
+        this.ADD_INPUT_BUTTON.addEventListener('click', () => this.addInput());
     }
 
     setDistanceStr(idx, distanceStr) {

@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <link rel="stylesheet" href="style.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+        <script src="https://unpkg.com/leaflet.tilelayer.gl@2.4.1/src/Leaflet.TileLayer.GL.js"></script>
         <script src="scripts/inputs.js"></script>
         <script src="scripts/settings.js"></script>
         <script src="scripts/map.js"></script>
@@ -33,7 +33,7 @@
                 <button id="add-input-button">Add Person</button>
                 <button onclick="updateMap()">Update Map</button>
                 <div id="total-distance">Total Distance: –</div>
-                <label><input type="checkbox" id="use-cost" onclick="updateMap()" /> Optimize for cost</label>
+                <label><input type="checkbox" id="use-cost" onclick="updateMap()" checked /> Optimize for cost</label>
             </div>
 
             <div id="settings" class="tab">

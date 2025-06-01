@@ -1,6 +1,6 @@
 # Prompts
 
-This app is 98% created by ChatGPT. Here are the prompts that made it happen:
+The initial prototype fot this app was 98% created by ChatGPT. Here are the prompts that made it happen:
 
 > I'm looking to build a web app that helps to find the best location for a group of people to meet, minimizing the overall travel time. Can you help me write the code for that?
 >
