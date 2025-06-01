@@ -8,6 +8,10 @@
         <link rel="stylesheet" href="style.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+        <script src="scripts/inputs.js"></script>
+        <script src="scripts/settings.js"></script>
+        <script src="scripts/map.js"></script>
+        <script src="scripts/geocoder.js"></script>
     </head>
     <body>
         <div id="sidebar">
@@ -26,7 +30,7 @@
                     </p>
                 </div>
                 <div id="inputs"></div>
-                <button onclick="addPersonInput()">Add Person</button>
+                <button id="add-input-button">Add Person</button>
                 <button onclick="updateMap()">Update Map</button>
                 <div id="total-distance">Total Distance: –</div>
                 <label><input type="checkbox" id="use-cost" onclick="updateMap()" /> Optimize for cost</label>
