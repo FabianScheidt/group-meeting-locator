@@ -21,10 +21,17 @@
     #map {
       flex: 1;
     }
+    .introduction h2 {
+        margin-bottom: 0;
+    }
+    .introduction p {
+        font-size: 0.8em;
+        margin: 0.5em 0 2em 0;
+    }
     .person-input {
       display: flex;
       flex-direction: column;
-      margin-bottom: 1em;
+      margin-bottom: 0.5em;
     }
     .person-input .top-row {
       display: flex;
@@ -49,11 +56,16 @@
     }
     .settings-group {
       margin-top: 1em;
-      font-size: 0.9em;
     }
     .settings-group label {
       display: block;
+      position: relative;
       margin-top: 0.5em;
+      line-height: 22px;
+    }
+    .settings-group label input {
+        position: absolute;
+        right: 0;
     }
     .tab {
       display: none;
@@ -79,22 +91,35 @@
     </div>
 
     <div id="people" class="tab active">
-      <h2>People & Locations</h2>
+      <div class="introduction">
+        <h2>People & Locations</h2>
+        <p>
+          Enter the locations of the people you're planning to meet with. If multiple people come from the same
+          location, add the location multiple times. When done, click "Update Map" to start the calculation.
+        </p>
+      </div>
       <div id="inputs"></div>
       <button onclick="addPersonInput()">Add Person</button>
       <button onclick="updateMap()">Update Map</button>
       <div id="total-distance">Total Distance: –</div>
+      <label><input type="checkbox" id="use-cost" onclick="updateMap()"> Optimize for cost</label>
     </div>
 
     <div id="settings" class="tab">
       <div class="settings-group">
-        <h3>Cost Settings</h3>
-        <label>Cost per km: <input type="number" id="cost-per-km" value="1" step="0.1"> EUR</label>
+        <div class="introduction">
+          <h2>Settings</h2>
+          <p>
+            You can configure the cost calculation. There is a cost for each kilometer travelled and two optional
+            thresholds to add a constant value when the distance is exceeded by a participant. You may use this to
+            account for cost related to accommodation.
+          </p>
+        </div>
+        <label>Cost per km (€): <input type="number" id="cost-per-km" value="1" step="0.1"></label>
         <label>Threshold 1 (km): <input type="number" id="threshold1" value="60"></label>
-        <label>Cost at Threshold 1: <input type="number" id="cost1" value="300"> EUR</label>
+        <label>Cost at Thres. 1 (€): <input type="number" id="cost1" value="300"></label>
         <label>Threshold 2 (km): <input type="number" id="threshold2" value="500"></label>
-        <label>Cost at Threshold 2: <input type="number" id="cost2" value="120"> EUR</label>
-        <label><input type="checkbox" id="use-cost"> Optimize for cost</label>
+        <label>Cost at Thres. 2 (€): <input type="number" id="cost2" value="120"></label>
       </div>
     </div>
   </div>
@@ -129,6 +154,9 @@
     function loadInputsFromLocalStorage() {
       const saved = JSON.parse(localStorage.getItem('locations') || '[]');
       saved.forEach(value => addPersonInput(value));
+      if (saved.length > 0) {
+        updateMap();
+      }
     }
 
     function addPersonInput(value = '') {
@@ -146,18 +174,35 @@
       personCount++;
     }
 
+    function getGeocodeCache(location) {
+        const cache = JSON.parse(localStorage.getItem('geocodes') || '{}');
+        return cache[location];
+    }
+
+    function setGeocodeCache(location, value) {
+        const cache = JSON.parse(localStorage.getItem('geocodes') || '{}');
+        cache[location] = value;
+        localStorage.setItem('geocodes', JSON.stringify(cache));
+    }
+
     async function geocodeLocation(location) {
+      const cache = getGeocodeCache(location)
+      if (cache) {
+          return cache;
+      }
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`;
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error('Network error');
         const data = await response.json();
         if (data.length === 0) return null;
-        return {
+        const res = {
           lat: parseFloat(data[0].lat),
           lon: parseFloat(data[0].lon),
           display_name: data[0].display_name
         };
+        setGeocodeCache(location, res);
+        return res;
       } catch (error) {
         console.error('Geocoding error:', error);
         return null;
@@ -259,7 +304,7 @@
         .on('drag', () => updateDistances(meanMarker.getLatLng()));
 
         map.setView([median.lat, median.lng], 6);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
         updateDistances({ lat: median.lat, lng: median.lng });
         addHeatMapAround([median.lat, median.lng], useCost);
@@ -276,9 +321,9 @@
           const dist = computeDistance(center, { lat: c.lat, lng: c.lon });
           const value = useCost ? computeCost(dist) : dist;
           total += value;
-          c.distanceElem.textContent = useCost ? `Cost: €${value.toFixed(1)}` : `Distance: ${dist.toFixed(1)} km`;
+          c.distanceElem.textContent = useCost ? `Cost: ${value.toFixed(2)} €` : `Distance: ${dist.toFixed(2)} km`;
         });
-        totalDistanceElem.textContent = useCost ? `Total Cost: €${total.toFixed(1)}` : `Total Distance: ${total.toFixed(1)} km`;
+        totalDistanceElem.textContent = useCost ? `Total Cost: ${total.toFixed(2)} €` : `Total Distance: ${total.toFixed(1)} km`;
     }
 
     function addHeatMapAround(center, useCost) {
@@ -307,6 +352,7 @@
         radius: 0,
         blur: 0,
         maxZoom: 10,
+        max: 0.5,
         gradient: { 0.0: 'green', 0.5: 'yellow', 1.0: 'red' }
       }).addTo(map);
     }
