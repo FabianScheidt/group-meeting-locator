@@ -50,18 +50,41 @@ float calculateCost(float distance) {
 
 // Maps a value to the heatmap containing RGB + alpha.
 vec4 heatmap(float t) {
-    vec4 green = vec4(0.0, 1.0, 0.0, 0.55);
-    vec4 yellow = vec4(0.8, 0.6, 0.0, 0.55);
-    vec4 red = vec4(0.6, 0.0, 0.05, 0.7);
-    vec4 darkRed = vec4(0.4, 0.0, 0.0, 0.8);
+    const int count = 6;
+    float positions[count];
+    vec4 colors[count];
+
+    // Green
+    positions[0] = 0.0;
+    colors[0] = vec4(68.0, 206.0, 27.0, 140.0) / 255.0;
+
+    // Light Green
+    positions[1] = 0.1;
+    colors[1] = vec4(187.0, 219.0, 68.0, 140.0) / 255.0;
+
+    // Yellow
+    positions[2] = 0.2;
+    colors[2] = vec4(247.0, 227.0, 121.0, 140.0) / 255.0;
+
+    // Orange
+    positions[3] = 0.5;
+    colors[3] = vec4(242.0, 161.0, 52.0, 140.0) / 255.0;
+
+    // Red
+    positions[4] = 0.7;
+    colors[4] = vec4(229.0, 31.0, 31.0, 180.0) / 255.0;
+
+    // Dark Red
+    positions[5] = 1.0;
+    colors[5] = vec4(100.0, 0.0, 0.0, 200.0) / 255.0;
+
     t = clamp(t, 0.0, 1.0);
-    if (t < 0.4) {
-        return mix(green, yellow, t / 0.4);
+    for (int i = 0; i < count - 1; i++) {
+        if (t >= positions[i] && t <= positions[i + 1]) {
+            float localT = (t - positions[i]) / (positions[i + 1] - positions[i]);
+            return mix(colors[i], colors[i + 1], localT);
+        }
     }
-    if (t < 0.8) {
-        return mix(yellow, red, (t - 0.4) / 0.4);
-    }
-    return mix(red, darkRed, (t - 0.8) / 0.2);
 }
 
 void main(void) {
@@ -81,12 +104,11 @@ void main(void) {
         float distance = haversineDistance(uLocationCoordinates[i], vLatLngCoords.yx);
         totalCost += uCalculateCost ? calculateCost(distance) : distance;
     }
-    float averageCost = totalCost / float(uLocationCoordinatesCount);
 
     // Put the calculated cost on a scale from zero to one
     float minCost = calculateCost(uMinDistance);
     float maxCost = calculateCost(uMaxDistance);
-    float res = clamp((averageCost - minCost) / (maxCost - minCost), 0.0, 1.0);
+    float res = clamp((totalCost - minCost) / (maxCost - minCost), 0.0, 1.0);
 
     // Compute heatmap
     vec4 resHeatmap = heatmap(res);

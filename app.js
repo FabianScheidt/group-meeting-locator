@@ -23,32 +23,36 @@ function computeCost(distance) {
     return cost;
 }
 
-function geometricMedian(costMode) {
+function findMinMax(costMode) {
     // Since our cost function is not continuous, we can't rely on optimization techniques like Weiszfeld’s
     // algorithm or gradient descent. Instead, we just sample points in a grid and pick the best one.
 
-    const minLat = Math.min(...coords.map((c) => c.lat));
-    const maxLat = Math.max(...coords.map((c) => c.lat));
-    const minLng = Math.min(...coords.map((c) => c.lng));
-    const maxLng = Math.max(...coords.map((c) => c.lng));
+    const bounds = L.latLngBounds(coords);
     const step = 0.05;
 
-    let bestPoint = null;
-    let bestValue = Infinity;
+    let minPoint = null;
+    let minValue = Infinity;
+    let maxPoint = null;
+    let maxValue = 0;
 
-    for (let lat = minLat; lat <= maxLat; lat += step) {
-        for (let lng = minLng; lng <= maxLng; lng += step) {
-            const total = coords.reduce((acc, c) => {
-                const dist = computeDistance({ lat, lng }, { lat: c.lat, lng: c.lng });
+    for (let lat = bounds.getSouth(); lat <= bounds.getNorth(); lat += step) {
+        for (let lng = bounds.getWest(); lng <= bounds.getEast(); lng += step) {
+            const point = { lat, lng };
+            const value = coords.reduce((acc, c) => {
+                const dist = computeDistance(point, { lat: c.lat, lng: c.lng });
                 return acc + (costMode ? computeCost(dist) : dist);
             }, 0);
-            if (total < bestValue) {
-                bestValue = total;
-                bestPoint = { lat, lng };
+            if (value < minValue) {
+                minPoint = point;
+                minValue = value;
+            }
+            if (value > minValue) {
+                maxPoint = point;
+                maxValue = value;
             }
         }
     }
-    return bestPoint;
+    return { minPoint, minValue, maxPoint, maxValue };
 }
 
 async function geocodeAllInputs() {
@@ -80,22 +84,27 @@ async function updateMap() {
     const settings = settingsHandler.getSettings();
     mapHandler.updateSettings(settings);
 
-    // Todo: Figure out proper way to scale the heatmap
-    const minDistance = settings.calculateCost ? 200 : 60;
-    const maxDistance = settings.calculateCost ? 600 : 150;
-    mapHandler.updateCoordinates(coords, minDistance, maxDistance);
-
     if (coords.length > 0) {
-        const median = geometricMedian(settings.calculateCost);
+        const minMax = findMinMax(settings.calculateCost);
+        const minPoint = minMax.minPoint;
 
-        mapHandler.setMeanMarker(median.lat, median.lng);
+        // Update markers on map
+        mapHandler.updateCoordinates(coords, minMax.minValue, minMax.maxValue);
+
+        // Add marker for min point
+        mapHandler.setMeanMarker(minPoint.lat, minPoint.lng);
         mapHandler.meanMarker
             .bindPopup(settings.calculateCost ? 'Optimal Location (Cost)' : 'Geometric Median')
             .on('drag', () => updateDistances(mapHandler.meanMarker.getLatLng()));
-        mapHandler.map.setView([median.lat, median.lng], 6);
 
-        updateDistances(median);
+        // Update distance texts
+        updateDistances(minPoint);
+
+        // Zoom map
+        const bounds = L.latLngBounds(coords);
+        mapHandler.map.flyToBounds(bounds, { duration: 0.5 });
     } else {
+        mapHandler.updateCoordinates([]);
         mapHandler.map.setView([0, 0], 2);
         totalDistanceElem.textContent = 'Total Distance: –';
     }
